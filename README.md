@@ -16,7 +16,7 @@ pip install tui-2048
 ### From source
 
 ```bash
-git clone https://github.com/yourusername/tui-2048.git
+git clone https://github.com/ps06756/tui-2048.git
 cd tui-2048
 pip install .
 ```
