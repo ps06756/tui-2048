@@ -118,11 +118,13 @@ class Game2048:
         original = [row[:] for row in self.board]
 
         # Rotate board so we can always slide left
+        # UP: 3 CW (=1 CCW) so bottom→right, then slide left moves toward top
+        # DOWN: 1 CW so top→right, then slide left moves toward bottom
         rotations = {
             Direction.LEFT: 0,
-            Direction.UP: 1,
+            Direction.UP: 3,
             Direction.RIGHT: 2,
-            Direction.DOWN: 3,
+            Direction.DOWN: 1,
         }
 
         for _ in range(rotations[direction]):
