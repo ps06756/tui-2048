@@ -8,9 +8,10 @@ from .game import Game2048, Direction
 def setup_colors() -> None:
     """Initialize color pairs matching the original 2048 game."""
     curses.start_color()
+    curses.use_default_colors()  # Enable transparent background with -1
 
-    # Check if terminal supports 256 colors
-    use_256 = curses.COLORS >= 256
+    # Check if terminal supports 256 colors AND can change colors
+    use_256 = curses.COLORS >= 256 and curses.can_change_color()
 
     if use_256:
         # Define custom colors approximating 2048's color scheme
@@ -60,8 +61,6 @@ def setup_colors() -> None:
         curses.init_pair(23, 40, -1)   # Instructions
     else:
         # Fallback for 8/16 color terminals
-        curses.use_default_colors()
-
         # Color pairs using basic colors
         curses.init_pair(1, curses.COLOR_WHITE, curses.COLOR_BLACK)     # Empty
         curses.init_pair(2, curses.COLOR_BLACK, curses.COLOR_WHITE)     # 2
