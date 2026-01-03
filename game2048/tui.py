@@ -1,90 +1,110 @@
 """TUI rendering and input handling using curses."""
 
 import curses
+import os
 from .game import Game2048, Direction
 
 
-# Box-drawing characters for the grid
-BOX = {
-    'tl': '╔', 'tr': '╗', 'bl': '╚', 'br': '╝',
-    'h': '═', 'v': '║',
-    'lt': '╠', 'rt': '╣', 'tt': '╦', 'bt': '╩',
-    'x': '╬',
-}
-
-# Color configuration: (foreground, background)
-# Designed to match the original 2048 color scheme
-TILE_STYLES = {
-    0:    (0, 0),       # Empty - dimmed
-    2:    (1, 0),       # Dark text on light bg
-    4:    (2, 0),
-    8:    (3, 0),
-    16:   (4, 0),
-    32:   (5, 0),
-    64:   (6, 0),
-    128:  (7, 0),
-    256:  (8, 0),
-    512:  (9, 0),
-    1024: (10, 0),
-    2048: (11, 0),
-}
-
-
 def setup_colors() -> None:
-    """Initialize color pairs for the game."""
+    """Initialize color pairs matching the original 2048 game."""
     curses.start_color()
-    curses.use_default_colors()
 
-    # Color pairs for tiles (trying to approximate 2048 colors)
-    curses.init_pair(0, 8, -1)                              # Empty (gray)
-    curses.init_pair(1, curses.COLOR_BLACK, 7)              # 2 - white bg
-    curses.init_pair(2, curses.COLOR_BLACK, 7)              # 4 - cream
-    curses.init_pair(3, curses.COLOR_WHITE, curses.COLOR_YELLOW)   # 8 - orange
-    curses.init_pair(4, curses.COLOR_WHITE, curses.COLOR_YELLOW)   # 16 - orange-red
-    curses.init_pair(5, curses.COLOR_WHITE, curses.COLOR_RED)      # 32 - red
-    curses.init_pair(6, curses.COLOR_WHITE, curses.COLOR_RED)      # 64 - red
-    curses.init_pair(7, curses.COLOR_BLACK, curses.COLOR_YELLOW)   # 128 - yellow
-    curses.init_pair(8, curses.COLOR_BLACK, curses.COLOR_YELLOW)   # 256 - yellow
-    curses.init_pair(9, curses.COLOR_BLACK, curses.COLOR_YELLOW)   # 512 - gold
-    curses.init_pair(10, curses.COLOR_BLACK, curses.COLOR_GREEN)   # 1024 - bright
-    curses.init_pair(11, curses.COLOR_BLACK, curses.COLOR_GREEN)   # 2048 - gold!
-    curses.init_pair(12, curses.COLOR_WHITE, curses.COLOR_MAGENTA) # > 2048
+    # Check if terminal supports 256 colors
+    use_256 = curses.COLORS >= 256
 
-    # UI colors
-    curses.init_pair(20, curses.COLOR_CYAN, -1)    # Title
-    curses.init_pair(21, curses.COLOR_YELLOW, -1)  # Score
-    curses.init_pair(22, curses.COLOR_WHITE, -1)   # Grid
-    curses.init_pair(23, curses.COLOR_GREEN, -1)   # Win message
-    curses.init_pair(24, curses.COLOR_RED, -1)     # Game over
+    if use_256:
+        # Define custom colors approximating 2048's color scheme
+        # Format: curses.init_color(color_number, r, g, b) where values are 0-1000
+
+        # Background colors
+        curses.init_color(20, 738, 678, 629)   # Board bg #bbada0
+        curses.init_color(21, 804, 757, 706)   # Empty cell #cdc1b4
+
+        # Tile backgrounds
+        curses.init_color(22, 933, 894, 855)   # 2: #eee4da
+        curses.init_color(23, 929, 878, 784)   # 4: #ede0c8
+        curses.init_color(24, 949, 694, 475)   # 8: #f2b179
+        curses.init_color(25, 961, 584, 388)   # 16: #f59563
+        curses.init_color(26, 965, 486, 373)   # 32: #f67c5f
+        curses.init_color(27, 965, 369, 231)   # 64: #f65e3b
+        curses.init_color(28, 929, 812, 447)   # 128: #edcf72
+        curses.init_color(29, 929, 800, 380)   # 256: #edcc61
+        curses.init_color(30, 929, 784, 314)   # 512: #edc850
+        curses.init_color(31, 929, 773, 247)   # 1024: #edc53f
+        curses.init_color(32, 929, 761, 180)   # 2048: #edc22e
+        curses.init_color(33, 235, 227, 178)   # >2048: #3c3a32
+
+        # Text colors
+        curses.init_color(40, 467, 431, 396)   # Dark text #776e65
+        curses.init_color(41, 976, 965, 949)   # Light text #f9f6f2
+
+        # Color pairs: (foreground, background)
+        curses.init_pair(1, 40, 21)    # Empty
+        curses.init_pair(2, 40, 22)    # 2
+        curses.init_pair(3, 40, 23)    # 4
+        curses.init_pair(4, 41, 24)    # 8
+        curses.init_pair(5, 41, 25)    # 16
+        curses.init_pair(6, 41, 26)    # 32
+        curses.init_pair(7, 41, 27)    # 64
+        curses.init_pair(8, 41, 28)    # 128
+        curses.init_pair(9, 41, 29)    # 256
+        curses.init_pair(10, 41, 30)   # 512
+        curses.init_pair(11, 41, 31)   # 1024
+        curses.init_pair(12, 41, 32)   # 2048
+        curses.init_pair(13, 41, 33)   # >2048
+
+        # UI colors
+        curses.init_pair(20, 40, 20)   # Board background
+        curses.init_pair(21, 41, -1)   # Title
+        curses.init_pair(22, 41, 24)   # Score box (orange-ish)
+        curses.init_pair(23, 40, -1)   # Instructions
+    else:
+        # Fallback for 8/16 color terminals
+        curses.use_default_colors()
+
+        # Color pairs using basic colors
+        curses.init_pair(1, curses.COLOR_WHITE, curses.COLOR_BLACK)     # Empty
+        curses.init_pair(2, curses.COLOR_BLACK, curses.COLOR_WHITE)     # 2
+        curses.init_pair(3, curses.COLOR_BLACK, curses.COLOR_WHITE)     # 4
+        curses.init_pair(4, curses.COLOR_WHITE, curses.COLOR_YELLOW)    # 8
+        curses.init_pair(5, curses.COLOR_WHITE, curses.COLOR_YELLOW)    # 16
+        curses.init_pair(6, curses.COLOR_WHITE, curses.COLOR_RED)       # 32
+        curses.init_pair(7, curses.COLOR_WHITE, curses.COLOR_RED)       # 64
+        curses.init_pair(8, curses.COLOR_BLACK, curses.COLOR_YELLOW)    # 128
+        curses.init_pair(9, curses.COLOR_BLACK, curses.COLOR_YELLOW)    # 256
+        curses.init_pair(10, curses.COLOR_BLACK, curses.COLOR_YELLOW)   # 512
+        curses.init_pair(11, curses.COLOR_BLACK, curses.COLOR_GREEN)    # 1024
+        curses.init_pair(12, curses.COLOR_BLACK, curses.COLOR_GREEN)    # 2048
+        curses.init_pair(13, curses.COLOR_WHITE, curses.COLOR_MAGENTA)  # >2048
+
+        # UI colors
+        curses.init_pair(20, curses.COLOR_WHITE, -1)   # Board
+        curses.init_pair(21, curses.COLOR_WHITE, -1)   # Title
+        curses.init_pair(22, curses.COLOR_BLACK, curses.COLOR_YELLOW)  # Score
+        curses.init_pair(23, curses.COLOR_WHITE, -1)   # Instructions
 
 
 def get_tile_color(value: int) -> int:
     """Get the color pair for a tile value."""
-    if value == 0:
-        return curses.color_pair(0) | curses.A_DIM
-    elif value in TILE_STYLES:
-        pair_num = TILE_STYLES[value][0]
-        return curses.color_pair(pair_num) | curses.A_BOLD
-    else:
-        return curses.color_pair(12) | curses.A_BOLD
+    color_map = {
+        0: 1, 2: 2, 4: 3, 8: 4, 16: 5, 32: 6, 64: 7,
+        128: 8, 256: 9, 512: 10, 1024: 11, 2048: 12
+    }
+    pair = color_map.get(value, 13)
+    attr = curses.A_BOLD if value >= 8 else 0
+    return curses.color_pair(pair) | attr
 
 
 class GameUI:
-    """Curses-based UI for 2048."""
+    """Curses-based UI for 2048 matching the web version."""
 
-    CELL_WIDTH = 8
-    CELL_HEIGHT = 3
+    # Larger cells like the original
+    CELL_WIDTH = 10
+    CELL_HEIGHT = 5
 
-    # ASCII art title
-    TITLE = [
-        "┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓",
-        "┃   ____   ___  _  _    ___    ┃",
-        "┃  |___ \\ / _ \\| || |  ( _ )   ┃",
-        "┃    __) | | | | || |_ / _ \\   ┃",
-        "┃   / __/| |_| |__   _| (_) |  ┃",
-        "┃  |_____|\\___/   |_|  \\___/   ┃",
-        "┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛",
-    ]
+    # Padding from top-left
+    MARGIN_X = 2
+    MARGIN_Y = 1
 
     def __init__(self, stdscr):
         """Initialize the UI."""
@@ -109,191 +129,173 @@ class GameUI:
             except curses.error:
                 pass
 
-    def _safe_addch(self, y: int, x: int, ch: str, attr: int = 0) -> None:
-        """Safely add character, handling screen boundaries."""
-        height, width = self.stdscr.getmaxyx()
-        if 0 <= y < height and 0 <= x < width - 1:
-            try:
-                self.stdscr.addstr(y, x, ch, attr)
-            except curses.error:
-                pass
+    def _draw_header(self) -> int:
+        """Draw the title and score boxes. Returns next y position."""
+        x = self.MARGIN_X
+        y = self.MARGIN_Y
 
-    def _draw_title(self, start_y: int, center_x: int) -> int:
-        """Draw the ASCII art title. Returns the next y position."""
-        title_width = len(self.TITLE[0])
-        x = center_x - title_width // 2
+        # Title "2048"
+        title = "2048"
+        self._safe_addstr(y, x, title, curses.color_pair(21) | curses.A_BOLD)
 
-        for i, line in enumerate(self.TITLE):
-            self._safe_addstr(start_y + i, x, line, curses.color_pair(20) | curses.A_BOLD)
+        # Score boxes to the right of the title
+        score_x = x + len(title) + 4
 
-        return start_y + len(self.TITLE) + 1
+        # SCORE box
+        score_label = " SCORE "
+        score_value = f" {self.game.score} "
+        self._safe_addstr(y, score_x, score_label, curses.color_pair(22))
+        self._safe_addstr(y + 1, score_x, score_value.center(len(score_label)),
+                         curses.color_pair(22) | curses.A_BOLD)
 
-    def _draw_scores(self, y: int, center_x: int) -> int:
-        """Draw score display. Returns the next y position."""
-        # Update best score
+        # BEST box
         if self.game.score > self.best_score:
             self.best_score = self.game.score
 
-        score_box = f"┌{'─' * 12}┬{'─' * 12}┐"
-        score_row = f"│ SCORE      │ BEST       │"
-        value_row = f"│ {self.game.score:<10} │ {self.best_score:<10} │"
-        score_end = f"└{'─' * 12}┴{'─' * 12}┘"
+        best_x = score_x + len(score_label) + 2
+        best_label = "  BEST  "
+        best_value = f" {self.best_score} "
+        self._safe_addstr(y, best_x, best_label, curses.color_pair(22))
+        self._safe_addstr(y + 1, best_x, best_value.center(len(best_label)),
+                         curses.color_pair(22) | curses.A_BOLD)
 
-        box_width = len(score_box)
-        x = center_x - box_width // 2
-
-        self._safe_addstr(y, x, score_box, curses.color_pair(21))
-        self._safe_addstr(y + 1, x, score_row, curses.color_pair(21) | curses.A_DIM)
-        self._safe_addstr(y + 2, x, value_row, curses.color_pair(21) | curses.A_BOLD)
-        self._safe_addstr(y + 3, x, score_end, curses.color_pair(21))
+        # Subtitle
+        subtitle = "Join the tiles, get to 2048!"
+        self._safe_addstr(y + 3, x, subtitle, curses.color_pair(23) | curses.A_DIM)
 
         return y + 5
 
-    def _draw_grid(self, start_y: int, start_x: int) -> None:
-        """Draw the game grid with box-drawing characters."""
-        grid_color = curses.color_pair(22) | curses.A_DIM
+    def _draw_board(self, start_y: int) -> int:
+        """Draw the game board. Returns next y position."""
+        x = self.MARGIN_X
+        y = start_y
 
-        # Calculate dimensions
-        inner_width = self.CELL_WIDTH
-        inner_height = self.CELL_HEIGHT
+        board_width = self.game.size * self.CELL_WIDTH + (self.game.size + 1)
+        board_height = self.game.size * self.CELL_HEIGHT + (self.game.size + 1)
 
-        # Draw top border
-        top = BOX['tl'] + (BOX['h'] * inner_width + BOX['tt']) * 3 + BOX['h'] * inner_width + BOX['tr']
-        self._safe_addstr(start_y, start_x, top, grid_color)
-
-        # Draw rows
+        # Draw each cell
         for row in range(self.game.size):
-            cell_y = start_y + 1 + row * (inner_height + 1)
+            for col in range(self.game.size):
+                cell_x = x + 1 + col * (self.CELL_WIDTH + 1)
+                cell_y = y + 1 + row * (self.CELL_HEIGHT + 1)
+                self._draw_cell(cell_y, cell_x, self.game.board[row][col])
 
-            # Draw cell content rows
-            for dy in range(inner_height):
-                line = BOX['v']
-                for col in range(self.game.size):
-                    value = self.game.board[row][col]
-                    cell_content = self._get_cell_content(value, dy)
-                    line += cell_content + BOX['v']
-                self._safe_addstr(cell_y + dy, start_x, line[0], grid_color)
+        # Draw grid borders
+        border_color = curses.color_pair(20)
 
-                # Draw each cell with its own color
-                x_pos = start_x + 1
-                for col in range(self.game.size):
-                    value = self.game.board[row][col]
-                    cell_content = self._get_cell_content(value, dy)
-                    color = get_tile_color(value)
-                    self._safe_addstr(cell_y + dy, x_pos, cell_content, color)
-                    x_pos += inner_width
-                    self._safe_addstr(cell_y + dy, x_pos, BOX['v'], grid_color)
-                    x_pos += 1
+        # Horizontal lines
+        for row in range(self.game.size + 1):
+            line_y = y + row * (self.CELL_HEIGHT + 1)
+            line = "─" * board_width
+            self._safe_addstr(line_y, x, line, border_color)
 
-            # Draw separator (except after last row)
-            if row < self.game.size - 1:
-                sep_y = cell_y + inner_height
-                sep = BOX['lt'] + (BOX['h'] * inner_width + BOX['x']) * 3 + BOX['h'] * inner_width + BOX['rt']
-                self._safe_addstr(sep_y, start_x, sep, grid_color)
+        # Vertical lines and corners
+        for row in range(self.game.size):
+            for cell_row in range(self.CELL_HEIGHT):
+                line_y = y + 1 + row * (self.CELL_HEIGHT + 1) + cell_row
+                for col in range(self.game.size + 1):
+                    line_x = x + col * (self.CELL_WIDTH + 1)
+                    self._safe_addstr(line_y, line_x, "│", border_color)
 
-        # Draw bottom border
-        bottom_y = start_y + 1 + self.game.size * (inner_height + 1) - 1
-        bottom = BOX['bl'] + (BOX['h'] * inner_width + BOX['bt']) * 3 + BOX['h'] * inner_width + BOX['br']
-        self._safe_addstr(bottom_y, start_x, bottom, grid_color)
+        # Corner pieces
+        for row in range(self.game.size + 1):
+            for col in range(self.game.size + 1):
+                corner_y = y + row * (self.CELL_HEIGHT + 1)
+                corner_x = x + col * (self.CELL_WIDTH + 1)
 
-    def _get_cell_content(self, value: int, row_in_cell: int) -> str:
-        """Get the content for a cell at a specific row within the cell."""
-        if row_in_cell == self.CELL_HEIGHT // 2:
-            # Center row - show value
-            if value == 0:
-                return ' ' * self.CELL_WIDTH
-            else:
-                return str(value).center(self.CELL_WIDTH)
-        else:
-            # Other rows - just padding
-            return ' ' * self.CELL_WIDTH
+                if row == 0 and col == 0:
+                    char = "┌"
+                elif row == 0 and col == self.game.size:
+                    char = "┐"
+                elif row == self.game.size and col == 0:
+                    char = "└"
+                elif row == self.game.size and col == self.game.size:
+                    char = "┘"
+                elif row == 0:
+                    char = "┬"
+                elif row == self.game.size:
+                    char = "┴"
+                elif col == 0:
+                    char = "├"
+                elif col == self.game.size:
+                    char = "┤"
+                else:
+                    char = "┼"
 
-    def _draw_instructions(self, y: int, center_x: int) -> None:
+                self._safe_addstr(corner_y, corner_x, char, border_color)
+
+        return y + board_height + 1
+
+    def _draw_cell(self, y: int, x: int, value: int) -> None:
+        """Draw a single cell with its value."""
+        color = get_tile_color(value)
+
+        # Fill the entire cell with background color
+        for dy in range(self.CELL_HEIGHT):
+            self._safe_addstr(y + dy, x, " " * self.CELL_WIDTH, color)
+
+        # Draw the value centered in the cell
+        if value > 0:
+            value_str = str(value)
+            value_x = x + (self.CELL_WIDTH - len(value_str)) // 2
+            value_y = y + self.CELL_HEIGHT // 2
+            self._safe_addstr(value_y, value_x, value_str, color)
+
+    def _draw_instructions(self, y: int) -> None:
         """Draw game instructions."""
-        instructions = [
-            "╭───────────────────────────────────╮",
-            "│  ← ↑ ↓ →  or  W A S D  to move   │",
-            "│      R = Restart   Q = Quit      │",
-            "╰───────────────────────────────────╯",
+        x = self.MARGIN_X
+
+        lines = [
+            "HOW TO PLAY: Use arrow keys (or WASD) to move the tiles.",
+            "Tiles with the same number merge into one when they touch.",
+            "Add them up to reach 2048!",
+            "",
+            "R = New Game    Q = Quit"
         ]
 
-        box_width = len(instructions[0])
-        x = center_x - box_width // 2
-
-        for i, line in enumerate(instructions):
-            attr = curses.A_DIM if i in (1, 2) else 0
-            self._safe_addstr(y + i, x, line, attr)
+        for i, line in enumerate(lines):
+            attr = curses.A_DIM if i < 3 else curses.A_BOLD if i == 4 else 0
+            self._safe_addstr(y + i, x, line, curses.color_pair(23) | attr)
 
     def _draw_game_over_overlay(self) -> None:
         """Draw game over or win overlay."""
         height, width = self.stdscr.getmaxyx()
 
+        # Calculate overlay position (over the board)
+        board_width = self.game.size * self.CELL_WIDTH + (self.game.size + 1)
+        board_height = self.game.size * self.CELL_HEIGHT + (self.game.size + 1)
+
+        overlay_x = self.MARGIN_X + board_width // 2 - 15
+        overlay_y = 6 + board_height // 2 - 3
+
         if self.game.won:
-            messages = [
-                "╔═══════════════════════════════╗",
-                "║                               ║",
-                "║      ★ ★ ★  YOU WIN!  ★ ★ ★   ║",
-                "║                               ║",
-                "║      You reached 2048!        ║",
-                "║                               ║",
-                f"║      Final Score: {self.game.score:<10} ║",
-                "║                               ║",
-                "║   Press R to play again       ║",
-                "║   Press Q to quit             ║",
-                "║                               ║",
-                "╚═══════════════════════════════╝",
-            ]
-            color = curses.color_pair(23) | curses.A_BOLD
+            msg1 = "    You Win!    "
+            msg2 = f"  Score: {self.game.score}  "
+            color = curses.color_pair(12) | curses.A_BOLD
         else:
-            messages = [
-                "╔═══════════════════════════════╗",
-                "║                               ║",
-                "║         GAME  OVER            ║",
-                "║                               ║",
-                f"║      Final Score: {self.game.score:<10} ║",
-                f"║      Best Score:  {self.best_score:<10} ║",
-                "║                               ║",
-                "║   Press R to try again        ║",
-                "║   Press Q to quit             ║",
-                "║                               ║",
-                "╚═══════════════════════════════╝",
-            ]
-            color = curses.color_pair(24) | curses.A_BOLD
+            msg1 = "   Game Over!   "
+            msg2 = f"  Score: {self.game.score}  "
+            color = curses.color_pair(6) | curses.A_BOLD
 
-        box_width = len(messages[0])
-        box_height = len(messages)
-        start_x = (width - box_width) // 2
-        start_y = (height - box_height) // 2
+        msg3 = " R=Retry  Q=Quit "
 
-        for i, line in enumerate(messages):
-            self._safe_addstr(start_y + i, start_x, line, color)
+        box_width = max(len(msg1), len(msg2), len(msg3)) + 4
+
+        # Draw box
+        self._safe_addstr(overlay_y, overlay_x, "┌" + "─" * (box_width - 2) + "┐", color)
+        self._safe_addstr(overlay_y + 1, overlay_x, "│" + msg1.center(box_width - 2) + "│", color)
+        self._safe_addstr(overlay_y + 2, overlay_x, "│" + msg2.center(box_width - 2) + "│", color)
+        self._safe_addstr(overlay_y + 3, overlay_x, "│" + msg3.center(box_width - 2) + "│", color)
+        self._safe_addstr(overlay_y + 4, overlay_x, "└" + "─" * (box_width - 2) + "┘", color)
 
     def draw(self) -> None:
         """Draw the entire game screen."""
         self.stdscr.clear()
 
-        height, width = self.stdscr.getmaxyx()
-        center_x = width // 2
+        y = self._draw_header()
+        y = self._draw_board(y)
+        self._draw_instructions(y)
 
-        # Calculate grid dimensions
-        grid_width = 1 + (self.CELL_WIDTH + 1) * self.game.size
-        grid_height = 1 + (self.CELL_HEIGHT + 1) * self.game.size
-
-        # Calculate starting positions
-        total_height = len(self.TITLE) + 1 + 5 + grid_height + 1 + 4
-        start_y = max(1, (height - total_height) // 2)
-
-        # Draw components
-        y = self._draw_title(start_y, center_x)
-        y = self._draw_scores(y, center_x)
-
-        grid_x = center_x - grid_width // 2
-        self._draw_grid(y, grid_x)
-
-        instructions_y = y + grid_height + 1
-        self._draw_instructions(instructions_y, center_x)
-
-        # Draw overlay if game ended
         if self.game.game_over or self.game.won:
             self._draw_game_over_overlay()
 
@@ -342,6 +344,9 @@ class GameUI:
 def run_game(stdscr=None) -> int:
     """Run the 2048 game."""
     if stdscr is None:
+        # Set TERM to support 256 colors if not already set
+        if 'TERM' not in os.environ or '256color' not in os.environ.get('TERM', ''):
+            os.environ['TERM'] = 'xterm-256color'
         return curses.wrapper(_run_game_wrapper)
     else:
         ui = GameUI(stdscr)
