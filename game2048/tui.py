@@ -97,9 +97,9 @@ def get_tile_color(value: int) -> int:
 class GameUI:
     """Curses-based UI for 2048 matching the web version."""
 
-    # Larger cells like the original
-    CELL_WIDTH = 10
-    CELL_HEIGHT = 5
+    # Cell dimensions (terminal chars are ~2:1 height:width, so width ~2x height for square look)
+    CELL_WIDTH = 8
+    CELL_HEIGHT = 3
 
     # Padding from top-left
     MARGIN_X = 2
@@ -244,17 +244,11 @@ class GameUI:
         """Draw game instructions."""
         x = self.MARGIN_X
 
-        lines = [
-            "HOW TO PLAY: Use arrow keys (or WASD) to move the tiles.",
-            "Tiles with the same number merge into one when they touch.",
-            "Add them up to reach 2048!",
-            "",
-            "R = New Game    Q = Quit"
-        ]
-
-        for i, line in enumerate(lines):
-            attr = curses.A_DIM if i < 3 else curses.A_BOLD if i == 4 else 0
-            self._safe_addstr(y + i, x, line, curses.color_pair(23) | attr)
+        # Controls box
+        self._safe_addstr(y, x, "CONTROLS", curses.color_pair(21) | curses.A_BOLD)
+        self._safe_addstr(y + 1, x, "  Move tiles:  Arrow Keys  or  W A S D", curses.color_pair(23))
+        self._safe_addstr(y + 2, x, "  New game:    R", curses.color_pair(23))
+        self._safe_addstr(y + 3, x, "  Quit:        Q", curses.color_pair(23))
 
     def _draw_game_over_overlay(self) -> None:
         """Draw game over or win overlay."""
